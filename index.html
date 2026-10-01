@@ -79,7 +79,7 @@
                 <button onclick="navigateTo('create')" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition duration-300 hover:bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-plus-circle text-pink-400"></i><span class="hidden md:inline">만들기</span></button>
                 <button onclick="navigateTo('mypage')" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition duration-300 hover:bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-folder-open text-purple-400"></i><span class="hidden md:inline">내 링크</span></button>
                 
-                <button id="nav-admin-btn" onclick="openAdminModal()" class="hidden px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition items-center gap-1.5"><i class="fa-solid fa-user-shield text-amber-400"></i><span>관리자 패널</span></button>
+                <button id="nav-admin-btn" onclick="openAdminModal()" class="hidden px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition items-center gap-1.5"><i class="fa-solid fa-user-shield text-amber-400"></i><span>관리자</span></button>
                 <div id="user-info-badge" class="hidden items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 text-xs text-slate-200"><i class="fa-solid fa-circle-user text-pink-400"></i><span id="user-id-display" class="font-bold text-white"></span><span id="user-role-badge" class="px-1.5 py-0.5 text-[10px] rounded font-semibold bg-slate-700 text-slate-300">일반</span></div>
                 <button id="nav-change-pwd-btn" onclick="openChangePasswordModal()" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-slate-200 border border-white/15 transition items-center gap-1"><i class="fa-solid fa-key text-yellow-400"></i></button>
                 <button id="nav-auth-btn" onclick="handleAuthButtonClick()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg transition-all flex items-center gap-1.5"><i class="fa-solid fa-arrow-right-to-bracket"></i><span id="auth-btn-text">로그인</span></button>
@@ -498,6 +498,14 @@
 
             document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?messageID=${msgId}`;
             document.getElementById('modal-share-result').classList.remove('hidden');
+
+            // 메시지 전송 후 입력 영역 및 테마 선택 상태 초기화
+            e.target.reset();
+            const defaultRadio = document.querySelector('input[name="theme"][value="box_open"]');
+            if (defaultRadio) {
+                defaultRadio.checked = true;
+                toggleCustomInput(defaultRadio);
+            }
         };
 
         // --- MESSAGE VIEW ---
@@ -601,6 +609,7 @@
                             <p class="text-sm font-medium text-white truncate max-w-md">${msg.content}</p>
                         </div>
                         <div class="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
+                            <button onclick="copyMessageLink('${msg.id}')" class="px-3 py-1.5 bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 text-xs font-medium rounded-xl text-pink-300 transition flex items-center gap-1"><i class="fa-solid fa-copy"></i>링크 복사</button>
                             <button onclick="extendExpiration('${msg.id}')" class="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-xs font-medium rounded-xl text-purple-300 transition">+1일 연장</button>
                             <button onclick="softDeleteMessage('${msg.id}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-xs font-medium rounded-xl text-red-300 transition">삭제</button>
                         </div>
@@ -640,6 +649,7 @@
                             <p class="text-slate-400">만료: ${msg.expiresAt ? new Date(msg.expiresAt).toLocaleString() : '무제한'}</p>
                         </div>
                         <div class="flex gap-2 shrink-0 flex-wrap justify-end items-center">
+                            <button onclick="copyMessageLink('${msg.id}')" class="px-3 py-1.5 bg-pink-500/20 hover:bg-pink-500/40 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-copy"></i>링크 복사</button>
                             <button onclick="adminOpenEditModal('${msg.id}')" class="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold transition">상세 편집</button>
                             ${isDel ? `<button onclick="adminRestoreMessage('${msg.id}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition">복원</button>` 
                                     : `<button onclick="softDeleteMessage('${msg.id}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition">삭제</button>`}
@@ -717,6 +727,29 @@
         };
 
         // --- UTILS ---
+        window.copyMessageLink = function(msgId) {
+            const link = `${window.location.origin}${window.location.pathname}?messageID=${msgId}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(() => {
+                    showToast("공유 링크가 복사되었습니다.", "success");
+                }).catch(() => {
+                    fallbackCopyText(link);
+                });
+            } else {
+                fallbackCopyText(link);
+            }
+        };
+
+        function fallbackCopyText(text) {
+            const t = document.createElement('input');
+            document.body.appendChild(t);
+            t.value = text;
+            t.select();
+            document.execCommand('copy');
+            document.body.removeChild(t);
+            showToast("공유 링크가 복사되었습니다.", "success");
+        }
+
         window.closeShareModal = () => document.getElementById('modal-share-result').classList.add('hidden');
         window.copyShareLinkInput = () => { document.getElementById('share-link-input').select(); document.execCommand('copy'); showToast("복사되었습니다.", "success"); };
         window.copyCurrentURL = () => { const t = document.createElement('input'); document.body.appendChild(t); t.value = window.location.href; t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast("링크가 복사되었습니다.", "success"); };
