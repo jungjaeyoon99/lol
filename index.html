@@ -838,19 +838,19 @@
                         description: '아래 버튼을 눌러 나만을 위한 메시지를 확인해 보세요.',
                         imageUrl: 'https://lol.jjy0205.site/og-image.png',
                         link: {
-                            mobile_web_url: shareUrl,
-                            web_url: shareUrl
+                            mobileWebUrl: shareUrl,
+                            webUrl: shareUrl
                         }
                     },
-                    buttons: {
+                    buttons: [
                         {
                             title: '비밀 메시지 확인하기',
                             link: {
-                                mobile_web_url: shareUrl,
-                                web_url: shareUrl
+                                mobileWebUrl: shareUrl,
+                                webUrl: shareUrl
                             }
                         }
-                    }
+                    ]
                 });
             } catch (error) {
                 console.error('Kakao Share Error:', error);
