@@ -842,7 +842,15 @@
                             webUrl: shareUrl
                         }
                     },
-                    buttonTitle: '메시지 확인'
+                    buttons: [
+                        {
+                            title: '메시지 확인',
+                            link: {
+                                mobileWebUrl: shareUrl,
+                                webUrl: shareUrl
+                            }
+                        }
+                    ]
                 });
             } catch (error) {
                 console.error('Kakao Share Error:', error);
