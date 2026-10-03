@@ -791,29 +791,61 @@
 
         window.shareKakao = function(url) {
             const shareInput = document.getElementById('share-link-input');
-            const shareUrl = url || (shareInput && !shareInput.closest('.hidden') ? shareInput.value.trim() : '') || window.location.href;
-            if (window.Kakao && window.Kakao.isInitialized()) {
-                try {
-                    window.Kakao.Share.sendDefault({
-                        objectType: 'feed',
-                        content: {
-                            title: '감성 비밀 메시지 도착!',
-                            description: '당신을 위한 특별한 비밀 메시지가 도착했습니다. 지금 바로 열어보세요!',
-                            imageUrl: 'https://lol.jjy0205.site/og-image.png',
-                            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-                        },
-                        buttons: [{ title: '메시지 확인하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
-                    });
-                } catch (error) {
-                    showToast("카카오톡 앱 키(JavaScript 키)를 설정해주세요.", "error");
-                    fallbackCopyText(shareUrl);
+            const rawUrl = String(url || (shareInput ? shareInput.value : '') || '').trim();
+
+            if (!rawUrl) {
+                showToast('공유할 메시지 링크를 찾을 수 없습니다.', 'error');
+                return;
+            }
+
+            let shareUrl;
+            try {
+                const parsedUrl = new URL(rawUrl, window.location.origin);
+                if (parsedUrl.origin !== 'https://lol.jjy0205.site') {
+                    showToast('올바르지 않은 공유 주소입니다.', 'error');
+                    return;
                 }
-            } else if (navigator.share) {
-                // 앱 키가 설정되지 않은 상태의 Fallback 처리
-                navigator.share({ title: '감성 비밀 메시지', text: '당신을 위한 메시지가 도착했습니다!', url: shareUrl });
-            } else {
-                fallbackCopyText(shareUrl);
-                showToast("링크가 클립보드에 복사되었습니다.", "info");
+                const messageID = parsedUrl.searchParams.get('messageID');
+                if (!messageID) {
+                    showToast('메시지 ID가 포함되지 않은 링크입니다. 메시지를 먼저 생성해 주세요.', 'error');
+                    return;
+                }
+                shareUrl = parsedUrl.href;
+            } catch (error) {
+                showToast('공유 링크 형식이 올바르지 않습니다.', 'error');
+                return;
+            }
+
+            if (!window.Kakao || !window.Kakao.isInitialized() || !window.Kakao.Share) {
+                showToast('카카오톡 공유 SDK가 초기화되지 않았습니다.', 'error');
+                return;
+            }
+
+            try {
+                window.Kakao.Share.sendDefault({
+                    objectType: 'feed',
+                    content: {
+                        title: '감성 비밀 메시지 도착!',
+                        description: '아래의 [메시지 확인하기] 버튼을 눌러 나만의 비밀 메시지를 확인하세요.',
+                        imageUrl: 'https://lol.jjy0205.site/og-image.png',
+                        link: {
+                            mobileWebUrl: shareUrl,
+                            webUrl: shareUrl
+                        }
+                    },
+                    buttons: [
+                        {
+                            title: '메시지 확인하기',
+                            link: {
+                                mobileWebUrl: shareUrl,
+                                webUrl: shareUrl
+                            }
+                        }
+                    ]
+                });
+            } catch (error) {
+                console.error('Kakao Share Error:', error);
+                showToast('카카오톡 공유 요청에 실패했습니다. 카카오 앱 설정과 도메인을 확인해 주세요.', 'error');
             }
         };
 
