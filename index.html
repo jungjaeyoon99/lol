@@ -7,14 +7,14 @@
     <meta name="description" content="당신을 위한 특별한 비밀 메시지가 도착했습니다. 링크를 열어 선물상자를 확인해 보세요.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="lol.jjy0205.site">
-    <meta property="og:title" content="비밀 메시지 도착!">
+    <meta property="og:title" content="감성 비밀 메시지 도착!">
     <meta property="og:description" content="당신을 위한 특별한 비밀 메시지가 도착했습니다. 지금 바로 열어보세요!">
     <meta property="og:image" content="https://lol.jjy0205.site/og-image.png">
     <meta property="og:image:secure_url" content="https://lol.jjy0205.site/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="비밀 메시지 도착!">
+    <meta name="twitter:title" content="감성 비밀 메시지 도착!">
     <meta name="twitter:description" content="당신을 위한 특별한 비밀 메시지가 도착했습니다. 지금 바로 열어보세요!">
     <meta name="twitter:image" content="https://lol.jjy0205.site/og-image.png">
     <!-- Tailwind CSS -->
@@ -527,15 +527,22 @@
             const sender = document.getElementById('input-sender').value.trim() || emailToId(currentUser.email);
             const recipient = document.getElementById('input-recipient').value.trim();
             const content = document.getElementById('input-content').value.trim();
+            if (/<\s*\/?\s*[a-z!][^>]*>/i.test(content)) {
+                showToast('메시지에는 HTML 태그를 입력할 수 없습니다.', 'error');
+                return;
+            }
             const animation = document.querySelector('input[name="theme"]:checked').value;
             const customCover = document.getElementById('input-custom-cover').value.trim();
             const expireVal = document.getElementById('select-expire').value;
             const expiresAt = expireVal !== 'unlimited' ? Date.now() + parseInt(expireVal) : null;
-            const msgId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+            if (!db) return showToast('데이터베이스에 연결할 수 없습니다.', 'error');
+            const messageRef = db.ref('messages').push();
+            const msgId = messageRef.key;
+            if (!msgId) return showToast('메시지 ID 생성에 실패했습니다.', 'error');
             generatedMessageId = msgId;
 
             const msgObj = { id: msgId, authorUid: currentUser.uid, authorId: emailToId(currentUser.email), sender, recipientName: recipient, content, animation, customCover, createdAt: Date.now(), expiresAt, isDeleted: false };
-            if (db) await db.ref(`messages/${msgId}`).set(msgObj);
+            await messageRef.set(msgObj);
 
             document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?messageID=${msgId}`;
             document.getElementById('modal-share-result').classList.remove('hidden');
@@ -591,9 +598,9 @@
             const card = document.getElementById('revealed-card');
             card.classList.remove('hidden'); setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 50);
             
-            document.getElementById('recipient-display-name').innerText = `To. ${currentLoadedMessage.recipientName}`;
-            document.getElementById('message-body-text').innerText = currentLoadedMessage.content;
-            document.getElementById('sender-display-name').innerText = currentLoadedMessage.sender || currentLoadedMessage.authorId;
+            document.getElementById('recipient-display-name').textContent = `To. ${String(currentLoadedMessage.recipientName ?? '')}`;
+            document.getElementById('message-body-text').textContent = String(currentLoadedMessage.content ?? '');
+            document.getElementById('sender-display-name').textContent = String(currentLoadedMessage.sender || currentLoadedMessage.authorId || '');
             const d = new Date(currentLoadedMessage.createdAt);
             document.getElementById('created-time-display').innerText = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
 
@@ -751,10 +758,15 @@
             e.preventDefault();
             const id = document.getElementById('edit-msg-id').value;
             const expStr = document.getElementById('edit-expires-at').value;
+            const editedContent = document.getElementById('edit-content').value;
+            if (/<\s*\/?\s*[a-z!][^>]*>/i.test(editedContent)) {
+                showToast('메시지에는 HTML 태그를 입력할 수 없습니다.', 'error');
+                return;
+            }
             const updates = {
                 authorId: document.getElementById('edit-author').value,
                 recipientName: document.getElementById('edit-recipient').value,
-                content: document.getElementById('edit-content').value,
+                content: editedContent,
                 animation: document.getElementById('edit-animation').value,
                 customCover: document.getElementById('edit-custom-cover').value,
                 expiresAt: expStr ? new Date(expStr).getTime() : null
@@ -778,7 +790,8 @@
         } catch(e) { console.error("Kakao SDK Init Error:", e); }
 
         window.shareKakao = function(url) {
-            const shareUrl = url || window.location.href;
+            const shareInput = document.getElementById('share-link-input');
+            const shareUrl = url || (shareInput && !shareInput.closest('.hidden') ? shareInput.value.trim() : '') || window.location.href;
             if (window.Kakao && window.Kakao.isInitialized()) {
                 try {
                     window.Kakao.Share.sendDefault({
