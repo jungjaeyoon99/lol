@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>lol.jjy0205.site - 감성 메시지 선물상자</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat SDKs (v9+) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <!-- Kakao SDK -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+
+    <style>
+        * { font-family: 'Noto Sans KR', 'Outfit', sans-serif; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #090d16 0%, #111827 40%, #1e1035 100%); min-height: 100vh; color: #f8fafc; overflow-x: hidden; }
+
+        /* Glassmorphism Styling */
+        .glass-card { background: rgba(255, 255, 255, 0.06); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); }
+        .glass-input { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; transition: all 0.3s ease; }
+        .glass-input:focus { outline: none; border-color: #ec4899; background: rgba(255, 255, 255, 0.14); box-shadow: 0 0 15px rgba(236, 72, 153, 0.4); }
+
+        /* Animations */
+        @keyframes pulseGlow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.08); } }
+        .animate-glow { animation: pulseGlow 3.5s ease-in-out infinite; }
+
+        /* Basic Box Open Animation */
+        .gift-container { perspective: 1000px; cursor: pointer; }
+        .gift-box { position: relative; width: 180px; height: 180px; margin: 0 auto; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .gift-box:hover { transform: scale(1.06) rotateY(10deg); }
+        .gift-lid { position: absolute; top: 0; left: -10px; width: 200px; height: 50px; background: linear-gradient(135deg, #ec4899, #f43f5e); border-radius: 8px; z-index: 10; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.8s ease, opacity 0.6s ease; }
+        .gift-lid::after { content: ''; position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 36px; height: 100%; background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .gift-body { position: absolute; top: 40px; left: 0; width: 180px; height: 140px; background: linear-gradient(135deg, #db2777, #e11d48); border-radius: 0 0 12px 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); overflow: hidden; }
+        .gift-body::after { content: ''; position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 32px; height: 100%; background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .gift-box.opened .gift-lid { transform: translateY(-160px) rotate(-25deg) scale(0.8); opacity: 0; }
+
+        /* Sparkle & Envelope */
+        .envelope-container { width: 220px; height: 150px; background: #38bdf8; border-radius: 12px; position: relative; cursor: pointer; box-shadow: 0 15px 35px rgba(0,0,0,0.3); transition: transform 0.4s ease; }
+        .envelope-container:hover { transform: translateY(-8px) scale(1.03); }
+        .sparkle-card-preview { width: 220px; height: 150px; background: linear-gradient(135deg, #8b5cf6, #d946ef); border-radius: 16px; position: relative; cursor: pointer; box-shadow: 0 15px 35px rgba(139, 92, 246, 0.4); transition: transform 0.5s ease; }
+        .sparkle-card-preview:hover { transform: rotateY(15deg) scale(1.05); }
+
+        /* Custom Emoji & Text Cover styles */
+        .custom-emoji-cover { font-size: 6rem; transition: transform 0.3s ease; text-align: center; }
+        .custom-emoji-cover:hover { transform: scale(1.1) rotate(5deg); }
+        .custom-text-cover { background: linear-gradient(135deg, #fb923c, #ec4899); border-radius: 16px; padding: 2rem; font-size: 1.25rem; font-weight: bold; text-align: center; color: white; transition: transform 0.4s ease; box-shadow: 0 15px 35px rgba(236, 72, 153, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; word-break: keep-all; }
+        .custom-text-cover:hover { transform: translateY(-5px) scale(1.05); }
+
+        #confettiCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 999; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen relative">
+    <canvas id="confettiCanvas"></canvas>
+    <div class="fixed top-1/4 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none animate-glow"></div>
+    <div class="fixed bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/15 rounded-full blur-3xl pointer-events-none animate-glow" style="animation-delay: 1.5s;"></div>
+
+    <!-- Header -->
+    <header class="w-full py-4 px-4 sm:px-6 border-b border-white/10 glass-card sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="javascript:void(0)" onclick="navigateTo('create')" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-pink-500/30 group-hover:scale-105 transition-transform"><i class="fa-solid fa-gift"></i></div>
+                <div>
+                    <span class="text-lg sm:text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-300 to-indigo-300">lol.jjy0205.site</span>
+                    <span class="block text-[10px] sm:text-xs text-slate-400 font-light">감성 비밀 메시지 서비스</span>
+                </div>
+            </a>
+            <nav class="flex items-center gap-1.5 sm:gap-3">
+                <button onclick="navigateTo('create')" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition duration-300 hover:bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-plus-circle text-pink-400"></i><span class="hidden md:inline">만들기</span></button>
+                <button onclick="navigateTo('mypage')" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition duration-300 hover:bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-folder-open text-purple-400"></i><span class="hidden md:inline">내 링크</span></button>
+                
+                <button id="nav-admin-btn" onclick="openAdminModal()" class="hidden px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition items-center gap-1.5"><i class="fa-solid fa-user-shield text-amber-400"></i><span>관리자</span></button>
+                <div id="user-info-badge" class="hidden items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 text-xs text-slate-200"><i class="fa-solid fa-circle-user text-pink-400"></i><span id="user-id-display" class="font-bold text-white"></span><span id="user-role-badge" class="px-1.5 py-0.5 text-[10px] rounded font-semibold bg-slate-700 text-slate-300">일반</span></div>
+                <button id="nav-change-pwd-btn" onclick="openChangePasswordModal()" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-slate-200 border border-white/15 transition items-center gap-1"><i class="fa-solid fa-key text-yellow-400"></i></button>
+                <button id="nav-auth-btn" onclick="handleAuthButtonClick()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg transition-all flex items-center gap-1.5"><i class="fa-solid fa-arrow-right-to-bracket"></i><span id="auth-btn-text">로그인</span></button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center items-center relative z-10">
+
+        <!-- VIEW A: MESSAGE REVEAL SCREEN -->
+        <section id="view-message" class="w-full hidden flex flex-col items-center justify-center my-auto py-8">
+            <div id="message-loading" class="text-center py-12">
+                <div class="inline-block w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-slate-300 font-medium">비밀 메시지를 불러오는 중입니다...</p>
+            </div>
+            <div id="message-expired-card" class="hidden glass-card rounded-3xl p-8 sm:p-12 text-center max-w-md w-full border-red-500/30">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 text-3xl"><i class="fa-solid fa-hourglass-end animate-bounce"></i></div>
+                <h2 class="text-2xl font-bold text-white mb-2">메시지를 찾을 수 없습니다</h2>
+                <p class="text-slate-300 text-sm mb-6">만료되거나 존재하지 않는 메시지입니다.</p>
+                <button onclick="navigateTo('create')" class="w-full py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>새 메시지 만들기</button>
+            </div>
+            <div id="message-reveal-stage" class="hidden w-full max-w-lg flex flex-col items-center">
+                <div id="unopened-box-wrapper" class="text-center py-8 w-full">
+                    <p class="text-pink-300 font-semibold mb-6 animate-pulse text-lg"><i class="fa-solid fa-hand-pointer mr-2"></i>클릭하여 메시지를 열어보세요!</p>
+                    <div id="interactive-gift-object" class="my-6 w-full flex justify-center" onclick="unwrapMessage()"></div>
+                    <p class="text-xs text-slate-400 mt-4 font-light">특별한 마음이 담긴 비밀 상자가 도착했습니다.</p>
+                </div>
+                <div id="revealed-card" class="hidden glass-card rounded-3xl p-6 sm:p-10 w-full border-purple-500/30 transform scale-95 opacity-0 transition-all duration-700">
+                    <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                        <div>
+                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30"><i class="fa-solid fa-envelope-open-text mr-1"></i>비밀 메시지</span>
+                            <h3 id="recipient-display-name" class="text-xl font-bold text-white mt-2"></h3>
+                        </div>
+                        <div class="text-right"><span id="created-time-display" class="text-xs text-slate-400 block"></span></div>
+                    </div>
+                    <div class="my-8 min-h-[120px] flex items-center justify-center text-center">
+                        <p id="message-body-text" class="text-lg sm:text-xl text-slate-100 font-medium leading-relaxed whitespace-pre-wrap break-words"></p>
+                    </div>
+                    <div class="text-right pt-4 border-t border-white/10">
+                        <p class="text-sm text-slate-300">From. <span id="sender-display-name" class="font-bold text-pink-400"></span></p>
+                    </div>
+                    
+                    <!-- NEW: Improved Share UI -->
+                    <div class="mt-8 pt-4 flex flex-col gap-3">
+                        <button onclick="handleNavigateToCreate()" class="w-full py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg hover:brightness-110 transition flex items-center justify-center gap-2"><i class="fa-solid fa-plus-circle"></i>나도 만들기</button>
+                        <div class="flex gap-2 w-full mt-1 justify-center">
+                            <button onclick="copyCurrentURL()" class="flex-1 py-3 px-2 rounded-xl font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-link"></i>링크 복사</button>
+                            <button onclick="shareKakao()" class="w-12 h-12 shrink-0 rounded-xl font-semibold bg-[#FEE500] hover:brightness-95 text-black transition flex items-center justify-center text-xl shadow-lg" title="카카오톡 공유"><i class="fa-solid fa-comment"></i></button>
+                            <button onclick="shareSMS()" class="w-12 h-12 shrink-0 rounded-xl font-semibold bg-[#22c55e] hover:bg-[#16a34a] text-white transition flex items-center justify-center text-xl shadow-lg" title="메시지(SMS) 공유"><i class="fa-solid fa-message"></i></button>
+                            <button onclick="shareInstagram()" class="w-12 h-12 shrink-0 rounded-xl font-semibold bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:brightness-110 text-white transition flex items-center justify-center text-xl shadow-lg" title="인스타그램 공유"><i class="fa-brands fa-instagram"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW B: MESSAGE CREATION SCREEN -->
+        <section id="view-create" class="w-full my-auto py-6">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-3 tracking-tight">나만의 <span class="bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-400">감성 메시지</span> 생성</h1>
+            </div>
+            <div id="create-guest-notice" class="hidden glass-card rounded-3xl p-8 text-center max-w-md mx-auto mb-6 border-pink-500/30">
+                <i class="fa-solid fa-lock text-4xl text-pink-400 mb-4 block"></i>
+                <h3 class="text-xl font-bold text-white mb-2">로그인이 필요합니다</h3>
+                <button onclick="openAuthModal()" class="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-bold text-sm shadow-lg hover:brightness-110 transition">로그인 / 회원가입 하러가기</button>
+            </div>
+            <div id="create-form-wrapper" class="glass-card rounded-3xl p-6 sm:p-10 max-w-xl mx-auto border-purple-500/20">
+                <form id="create-message-form" onsubmit="handleCreateMessage(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-semibold text-slate-300 mb-2">보내는 사람 (선택)</label><input type="text" id="input-sender" placeholder="예: 비밀친구" class="w-full px-4 py-3 rounded-xl glass-input text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-300 mb-2">받는 사람 <span class="text-pink-400">*</span></label><input type="text" id="input-recipient" required placeholder="예: 영희에게" class="w-full px-4 py-3 rounded-xl glass-input text-sm"></div>
+                    </div>
+                    <div><label class="block text-xs font-semibold text-slate-300 mb-2">메시지 내용 <span class="text-pink-400">*</span></label><textarea id="input-content" required rows="4" placeholder="메시지를 적어주세요..." class="w-full px-4 py-3 rounded-xl glass-input text-sm resize-none"></textarea></div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">애니메이션/커버 효과 선택</label>
+                        <div class="grid grid-cols-3 md:grid-cols-5 gap-2 mb-3">
+                            <label class="cursor-pointer"><input type="radio" name="theme" value="box_open" checked onchange="toggleCustomInput(this)" class="peer hidden"><div class="p-2 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:border-pink-500 peer-checked:bg-pink-500/20 transition"><i class="fa-solid fa-gift text-xl text-pink-400 block mb-1"></i><span class="text-[10px] text-slate-200">선물상자</span></div></label>
+                            <label class="cursor-pointer"><input type="radio" name="theme" value="sparkle" onchange="toggleCustomInput(this)" class="peer hidden"><div class="p-2 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:border-purple-500 peer-checked:bg-purple-500/20 transition"><i class="fa-solid fa-wand-magic-sparkles text-xl text-purple-400 block mb-1"></i><span class="text-[10px] text-slate-200">반짝카드</span></div></label>
+                            <label class="cursor-pointer"><input type="radio" name="theme" value="envelope" onchange="toggleCustomInput(this)" class="peer hidden"><div class="p-2 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:border-sky-500 peer-checked:bg-sky-500/20 transition"><i class="fa-solid fa-envelope-open text-xl text-sky-400 block mb-1"></i><span class="text-[10px] text-slate-200">편지봉투</span></div></label>
+                            <label class="cursor-pointer"><input type="radio" name="theme" value="custom_emoji" onchange="toggleCustomInput(this)" class="peer hidden"><div class="p-2 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:border-yellow-400 peer-checked:bg-yellow-400/20 transition"><i class="fa-regular fa-face-smile text-xl text-yellow-400 block mb-1"></i><span class="text-[10px] text-slate-200">이모지</span></div></label>
+                            <label class="cursor-pointer"><input type="radio" name="theme" value="custom_text" onchange="toggleCustomInput(this)" class="peer hidden"><div class="p-2 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:border-emerald-400 peer-checked:bg-emerald-400/20 transition"><i class="fa-solid fa-font text-xl text-emerald-400 block mb-1"></i><span class="text-[10px] text-slate-200">텍스트</span></div></label>
+                        </div>
+                        <div id="custom-cover-wrapper" class="hidden">
+                            <input type="text" id="input-custom-cover" placeholder="표시할 이모지(예: 🚀)나 문구를 입력하세요" class="w-full px-4 py-3 rounded-xl glass-input text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">유효기간 설정</label>
+                        <select id="select-expire" class="w-full px-4 py-3 rounded-xl glass-input text-sm bg-slate-900">
+                            <option value="3600000">1시간 후 만료</option>
+                            <option value="86400000" selected>1일 (24시간) 후 만료</option>
+                            <option value="604800000">7일 후 만료</option>
+                            <option value="unlimited">무제한 (만료 없음)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 shadow-xl shadow-purple-500/25 hover:brightness-110 active:scale-95 transition"><i class="fa-solid fa-link mr-2"></i>공유 링크 생성하기</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- VIEW C: MY PAGE -->
+        <section id="view-mypage" class="w-full hidden my-auto py-6">
+            <div class="text-center mb-8"><h2 class="text-3xl font-extrabold text-white mb-2">내 메시지 목록</h2></div>
+            <div id="mypage-unauth-notice" class="glass-card rounded-3xl p-8 text-center max-w-md mx-auto hidden">
+                <i class="fa-solid fa-lock text-4xl text-purple-400 mb-4 block"></i>
+                <h3 class="text-xl font-bold text-white mb-2">로그인이 필요합니다</h3>
+                <button onclick="openAuthModal()" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-bold text-sm shadow-lg mt-4">로그인 / 회원가입</button>
+            </div>
+            <div id="mypage-links-container" class="space-y-4 max-w-2xl mx-auto"></div>
+        </section>
+    </main>
+
+    <!-- ADMIN EDIT MODAL -->
+    <div id="modal-admin-edit" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-blue-500/30 relative">
+            <button onclick="closeAdminEditModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-pen-to-square text-blue-400 mr-2"></i>메시지 상세 편집</h3>
+            
+            <form id="admin-edit-form" onsubmit="handleAdminEditSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-msg-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs text-slate-300 mb-1">작성자(ID)</label><input type="text" id="edit-author" class="w-full px-3 py-2 rounded-lg glass-input text-sm"></div>
+                    <div><label class="block text-xs text-slate-300 mb-1">받는사람</label><input type="text" id="edit-recipient" class="w-full px-3 py-2 rounded-lg glass-input text-sm"></div>
+                </div>
+                <div><label class="block text-xs text-slate-300 mb-1">메시지 내용</label><textarea id="edit-content" rows="3" class="w-full px-3 py-2 rounded-lg glass-input text-sm"></textarea></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">커버 타입</label>
+                        <select id="edit-animation" class="w-full px-3 py-2 rounded-lg glass-input text-sm bg-slate-900">
+                            <option value="box_open">선물상자</option><option value="sparkle">반짝카드</option><option value="envelope">편지봉투</option>
+                            <option value="custom_emoji">커스텀 이모지</option><option value="custom_text">커스텀 텍스트</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-xs text-slate-300 mb-1">커버 내용 (이모지/텍스트)</label><input type="text" id="edit-custom-cover" class="w-full px-3 py-2 rounded-lg glass-input text-sm"></div>
+                </div>
+                
+                <div class="border-t border-white/10 pt-4 mt-2">
+                    <label class="block text-xs font-bold text-yellow-300 mb-2">만료 시간 관리</label>
+                    <input type="datetime-local" id="edit-expires-at" class="w-full px-3 py-2 rounded-lg glass-input text-sm bg-slate-900 mb-3">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="quickSetExpire('now')" class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded hover:bg-red-500/40">즉시만료</button>
+                        <button type="button" onclick="quickSetExpire('-1h')" class="px-2 py-1 bg-orange-500/20 text-orange-300 text-xs rounded hover:bg-orange-500/40">-1시간</button>
+                        <button type="button" onclick="quickSetExpire('-1d')" class="px-2 py-1 bg-orange-500/20 text-orange-300 text-xs rounded hover:bg-orange-500/40">-1일</button>
+                        <button type="button" onclick="quickSetExpire('+1h')" class="px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded hover:bg-emerald-500/40">+1시간</button>
+                        <button type="button" onclick="quickSetExpire('+1d')" class="px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded hover:bg-emerald-500/40">+1일</button>
+                        <button type="button" onclick="quickSetExpire('+7d')" class="px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded hover:bg-emerald-500/40">+7일</button>
+                        <button type="button" onclick="quickSetExpire('unlimited')" class="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded hover:bg-blue-500/40">무제한</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-4">
+                    <button type="button" onclick="closeAdminEditModal()" class="flex-1 py-2 bg-white/10 rounded-lg text-sm">취소</button>
+                    <button type="submit" class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">변경사항 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALS (Share, Auth, Pwd, Admin, Privacy) -->
+    <!-- Share Modal -->
+    <div id="modal-share-result" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full border-pink-500/30 text-center relative">
+            <button onclick="closeShareModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <div class="w-16 h-16 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center text-3xl mx-auto mb-4"><i class="fa-solid fa-check"></i></div>
+            <h3 class="text-2xl font-bold text-white mb-2">링크 생성 완료!</h3>
+            <div class="bg-black/40 p-3 rounded-xl border border-white/10 mb-4 flex items-center gap-2">
+                <input type="text" id="share-link-input" readonly class="bg-transparent text-xs text-pink-300 w-full focus:outline-none">
+                <button onclick="copyShareLinkInput()" class="px-3 py-2 bg-pink-600 text-white rounded-lg text-xs font-semibold shrink-0">복사</button>
+            </div>
+            
+            <!-- NEW: Added SNS Share buttons -->
+            <div class="flex justify-center gap-4 mb-6">
+                <button onclick="shareKakao(document.getElementById('share-link-input').value)" class="w-12 h-12 rounded-full bg-[#FEE500] hover:scale-110 text-black flex items-center justify-center text-xl transition shadow-lg" title="카카오톡 공유"><i class="fa-solid fa-comment"></i></button>
+                <button onclick="shareSMS(document.getElementById('share-link-input').value)" class="w-12 h-12 rounded-full bg-[#22c55e] hover:scale-110 text-white flex items-center justify-center text-xl transition shadow-lg" title="메시지(SMS) 공유"><i class="fa-solid fa-message"></i></button>
+                <button onclick="shareInstagram(document.getElementById('share-link-input').value)" class="w-12 h-12 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:scale-110 text-white flex items-center justify-center text-xl transition shadow-lg" title="인스타그램 공유"><i class="fa-brands fa-instagram"></i></button>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="previewCreatedMessage()" class="flex-1 py-3 bg-white/10 text-white rounded-xl text-xs font-semibold">직접 보기</button>
+                <button onclick="closeShareModal()" class="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="modal-auth" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-sm w-full border-purple-500/30 relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            
+            <!-- Tab Navigation with Sliding Indicator -->
+            <div class="relative border-b border-white/10 mb-6 flex">
+                <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-sm font-bold text-pink-400 transition-colors duration-300 z-10 focus:outline-none">로그인</button>
+                <button id="tab-signup" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-sm font-bold text-slate-400 transition-colors duration-300 z-10 focus:outline-none">회원가입</button>
+                <div id="auth-tab-indicator" class="absolute bottom-0 left-0 w-1/2 h-0.5 bg-pink-500 transition-all duration-300 ease-in-out"></div>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div><label class="block text-xs font-semibold text-slate-300 mb-1">아이디 (ID)</label><input type="text" id="auth-username" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm"></div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">비밀번호</label><input type="password" id="auth-password" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm">
+                    <p id="pwd-hint-text" class="text-[11px] text-pink-300/80 mt-1 hidden"><i class="fa-solid fa-circle-info mr-1"></i>설정된 기준 자수를 초과해야 합니다.</p>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-300 py-1"><input type="checkbox" id="auth-remember" checked class="accent-pink-500"><span>자동 로그인</span></div>
+                <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm">로그인</button>
+            </form>
+            <div class="mt-4 text-center"><a href="javascript:void(0)" onclick="openPrivacyModal()" class="text-xs text-slate-400 hover:text-pink-300 underline">개인정보 처리방침 안내</a></div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="modal-change-password" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-sm w-full border-yellow-500/30 relative">
+            <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="text-xl font-bold text-white mb-6 text-center">비밀번호 변경</h3>
+            <form id="change-pwd-form" onsubmit="handleChangePassword(event)" class="space-y-4">
+                <input type="password" id="change-pwd-current" required placeholder="현재 비밀번호" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm">
+                <input type="password" id="change-pwd-new" required placeholder="새 비밀번호" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm">
+                <input type="password" id="change-pwd-confirm" required placeholder="새 비밀번호 재입력" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm">
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-pink-600 text-white rounded-xl font-bold mt-2">변경하기</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Panel List Modal -->
+    <div id="modal-admin" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-5xl w-full max-h-[85vh] flex flex-col border-amber-500/30 relative">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-shield text-amber-400 mr-2"></i>관리자 전용 패널</h3>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="overflow-y-auto flex-grow pr-1 space-y-3" id="admin-messages-list"></div>
+            <div class="pt-4 border-t border-white/10 mt-4 flex justify-between items-center text-xs text-slate-400">
+                <span id="admin-msg-count">조회 중...</span>
+                <button onclick="loadAdminAllMessages()" class="px-3 py-1.5 bg-white/10 text-white rounded-lg"><i class="fa-solid fa-rotate-right mr-1"></i>새로고침</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div id="modal-privacy" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">개인정보 처리방침</h3>
+            <div class="text-xs text-slate-300 space-y-2 mb-6">
+                <p>1. 수집항목: UID, 아이디, IP, User-Agent, 화면 해상도, 플랫폼 등 (이용 형태에 따라 상이)</p>
+                <p>2. 목적: 메시지 전달, 서비스 보호, 로그 기록 등</p>
+                <p>3. 정책: 삭제 요청 시 isDeleted: true로 논리적 삭제 처리됨.</p>
+            </div>
+            <button onclick="closePrivacyModal()" class="w-full py-2 bg-white/10 rounded-xl text-white">닫기</button>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-16 right-4 sm:right-8 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <footer class="w-full py-4 px-6 border-t border-white/10 glass-card mt-auto z-10">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-400">
+            <div>Copyright © Jaeyun Jeong. All rights reserved.</div>
+            <div class="flex items-center gap-4"><a href="javascript:void(0)" onclick="openPrivacyModal()" class="hover:text-pink-300">개인정보 처리방침</a><span>|</span><span>lol.jjy0205.site</span></div>
+        </div>
+    </footer>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBHWDhfG30iiEtCuXayZeKTmx6BCbsVqHo", authDomain: "lol-site-jjy.firebaseapp.com", projectId: "lol-site-jjy", storageBucket: "lol-site-jjy.firebasestorage.app", messagingSenderId: "400366733333", appId: "1:400366733333:web:25b250d8efd66a69d0661c", measurementId: "G-GJVP0SFKWF" };
+        const INTERNAL_EMAIL_DOMAIN = '@lol.jjy0205.site';
+        function idToEmail(id) { return `${id.trim().toLowerCase()}${INTERNAL_EMAIL_DOMAIN}`; }
+        function emailToId(email) { return email ? email.replace(INTERNAL_EMAIL_DOMAIN, '') : ''; }
+        function safePushState(urlParams) { try { const newUrl = window.location.pathname + urlParams; window.history.pushState({ path: newUrl }, '', newUrl); } catch (e) {} }
+
+        let app, auth, db;
+        try { app = firebase.initializeApp(firebaseConfig); auth = firebase.auth(); db = firebase.database(); } catch (e) {}
+
+        let currentUser = null, currentUserRole = 'user', userIpAddress = '127.0.0.1', currentAuthMode = 'login', currentLoadedMessage = null, generatedMessageId = null, initialAutoLoginLogged = false;
+        let globalAdminMessagesMap = {};
+
+        async function fetchUserIP() { try { const res = await fetch('https://api.ipify.org?format=json'); const data = await res.json(); userIpAddress = data.ip || '127.0.0.1'; } catch (err) {} }
+        async function getLeastPasswordCharacter() { if (!db) return 8; try { const snap = await db.ref('LeastPasswordCharacter').once('value'); const val = snap.val(); return (val !== null && !isNaN(val)) ? Number(val) : 8; } catch (e) { return 8; } }
+        async function validatePasswordLength(pwd) { const least = await getLeastPasswordCharacter(); if (pwd.length <= least) { showToast(`비밀번호는 ${least}자를 초과해야 합니다.`, "error"); return false; } return true; }
+        
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `glass-card px-4 py-3 rounded-2xl text-xs font-semibold text-white flex items-center gap-2 shadow-2xl transition-all duration-300 transform translate-y-4 opacity-0 border-l-4 ${type === 'success' ? 'border-l-emerald-400 bg-emerald-950/60' : type === 'error' ? 'border-l-red-500 bg-red-950/60' : 'border-l-pink-500 bg-purple-950/60'}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => toast.remove(), 300); }, 3200);
+        }
+        function writeLogRecord(path, data) { if (db) { try { db.ref(path).push().set(data); } catch (e) {} } }
+
+        // --- AUTH ---
+        if (auth) {
+            auth.onAuthStateChanged(async (user) => {
+                currentUser = user;
+                if (user) {
+                    const rawId = emailToId(user.email);
+                    const snap = await db.ref(`role/${user.uid}`).once('value');
+                    currentUserRole = snap.val() === 'admin' ? 'admin' : 'user';
+                    
+                    document.getElementById('auth-btn-text').innerText = '로그아웃';
+                    document.getElementById('user-id-display').innerText = rawId;
+                    const roleBadge = document.getElementById('user-role-badge');
+                    if (currentUserRole === 'admin') { roleBadge.innerText = '관리자'; roleBadge.className = 'px-1.5 py-0.5 text-[10px] rounded font-bold bg-amber-500 text-black'; document.getElementById('nav-admin-btn').classList.remove('hidden'); }
+                    else { roleBadge.innerText = '일반'; roleBadge.className = 'px-1.5 py-0.5 text-[10px] rounded font-semibold bg-slate-700 text-slate-300'; document.getElementById('nav-admin-btn').classList.add('hidden'); }
+                    
+                    document.getElementById('user-info-badge').classList.remove('hidden');
+                    document.getElementById('user-info-badge').classList.add('flex');
+                    document.getElementById('nav-change-pwd-btn').classList.remove('hidden');
+                    document.getElementById('nav-change-pwd-btn').classList.add('flex');
+                    document.getElementById('create-guest-notice')?.classList.add('hidden');
+                    document.getElementById('create-form-wrapper')?.classList.remove('opacity-50', 'pointer-events-none');
+                    document.getElementById('mypage-unauth-notice')?.classList.add('hidden');
+
+                    if (!initialAutoLoginLogged) {
+                        initialAutoLoginLogged = true;
+                        writeLogRecord('log/autologin', { uid: user.uid, id: rawId, ip: userIpAddress, userAgent: navigator.userAgent, timestamp: Date.now() });
+                    }
+                } else {
+                    currentUserRole = 'user';
+                    document.getElementById('auth-btn-text').innerText = '로그인';
+                    document.getElementById('user-info-badge').classList.add('hidden');
+                    document.getElementById('nav-change-pwd-btn').classList.add('hidden');
+                    document.getElementById('nav-admin-btn').classList.add('hidden');
+                    document.getElementById('create-guest-notice')?.classList.remove('hidden');
+                    document.getElementById('create-form-wrapper')?.classList.add('opacity-50', 'pointer-events-none');
+                }
+                if (!document.getElementById('view-mypage').classList.contains('hidden')) loadMyPageLinks();
+            });
+        }
+
+        window.handleAuthButtonClick = function() { currentUser ? auth.signOut().then(() => showToast("로그아웃 되었습니다.", "info")) : openAuthModal(); };
+        window.openAuthModal = function() { document.getElementById('modal-auth').classList.remove('hidden'); switchAuthTab('login'); };
+        window.closeAuthModal = function() { document.getElementById('modal-auth').classList.add('hidden'); document.getElementById('auth-form').reset(); };
+        
+        window.switchAuthTab = function(mode) { 
+            currentAuthMode = mode; 
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+            const indicator = document.getElementById('auth-tab-indicator');
+
+            if (mode === 'login') {
+                tabLogin.classList.remove('text-slate-400');
+                tabLogin.classList.add('text-pink-400');
+                tabSignup.classList.remove('text-pink-400');
+                tabSignup.classList.add('text-slate-400');
+                indicator.style.transform = 'translateX(0%)';
+            } else {
+                tabSignup.classList.remove('text-slate-400');
+                tabSignup.classList.add('text-pink-400');
+                tabLogin.classList.remove('text-pink-400');
+                tabLogin.classList.add('text-slate-400');
+                indicator.style.transform = 'translateX(100%)';
+            }
+
+            document.getElementById('auth-submit-btn').innerText = mode === 'login' ? '로그인' : '회원가입'; 
+            document.getElementById('pwd-hint-text').classList.toggle('hidden', mode === 'login'); 
+        };
+        
+        window.handleAuthSubmit = async function(e) {
+            e.preventDefault();
+            if (!auth) return showToast("DB 설정 오류", "error");
+            const id = document.getElementById('auth-username').value.trim();
+            const pwd = document.getElementById('auth-password').value.trim();
+            const remember = document.getElementById('auth-remember').checked;
+            const email = idToEmail(id);
+
+            try {
+                await auth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+                if (currentAuthMode === 'login') {
+                    const cred = await auth.signInWithEmailAndPassword(email, pwd);
+                    writeLogRecord('log/login', { uid: cred.user.uid, id: id, ip: userIpAddress, userAgent: navigator.userAgent, timestamp: Date.now() });
+                    showToast("로그인 성공!", "success");
+                } else {
+                    if (!(await validatePasswordLength(pwd))) return;
+                    const cred = await auth.createUserWithEmailAndPassword(email, pwd);
+                    writeLogRecord('log/login', { uid: cred.user.uid, id: id, ip: userIpAddress, userAgent: navigator.userAgent, timestamp: Date.now() });
+                    showToast("회원가입 완료!", "success");
+                }
+                closeAuthModal();
+            } catch (err) { showToast(err.message, "error"); }
+        };
+
+        window.openChangePasswordModal = function() { if(!currentUser) return showToast("로그인 필요", "error"); document.getElementById('modal-change-password').classList.remove('hidden'); };
+        window.closeChangePasswordModal = function() { document.getElementById('modal-change-password').classList.add('hidden'); document.getElementById('change-pwd-form').reset(); };
+        window.handleChangePassword = async function(e) {
+            e.preventDefault();
+            const curr = document.getElementById('change-pwd-current').value;
+            const newP = document.getElementById('change-pwd-new').value;
+            if (newP !== document.getElementById('change-pwd-confirm').value) return showToast("새 비밀번호 불일치", "error");
+            if (!(await validatePasswordLength(newP))) return;
+            try {
+                const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, curr);
+                await currentUser.reauthenticateWithCredential(cred);
+                await currentUser.updatePassword(newP);
+                showToast("비밀번호 변경 완료", "success");
+                closeChangePasswordModal();
+            } catch (err) { showToast("변경 실패 (현재 비밀번호 확인)", "error"); }
+        };
+
+        // --- MESSAGE CREATION ---
+        window.toggleCustomInput = function(radio) {
+            const wrapper = document.getElementById('custom-cover-wrapper');
+            const inp = document.getElementById('input-custom-cover');
+            if(radio.value === 'custom_emoji' || radio.value === 'custom_text') {
+                wrapper.classList.remove('hidden');
+                inp.required = true;
+            } else {
+                wrapper.classList.add('hidden');
+                inp.required = false;
+                inp.value = '';
+            }
+        };
+
+        window.handleCreateMessage = async function(e) {
+            e.preventDefault();
+            if (!currentUser) return showToast("로그인 필요", "error");
+            
+            const sender = document.getElementById('input-sender').value.trim() || emailToId(currentUser.email);
+            const recipient = document.getElementById('input-recipient').value.trim();
+            const content = document.getElementById('input-content').value.trim();
+            const animation = document.querySelector('input[name="theme"]:checked').value;
+            const customCover = document.getElementById('input-custom-cover').value.trim();
+            const expireVal = document.getElementById('select-expire').value;
+            const expiresAt = expireVal !== 'unlimited' ? Date.now() + parseInt(expireVal) : null;
+            const msgId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+            generatedMessageId = msgId;
+
+            const msgObj = { id: msgId, authorUid: currentUser.uid, authorId: emailToId(currentUser.email), sender, recipientName: recipient, content, animation, customCover, createdAt: Date.now(), expiresAt, isDeleted: false };
+            if (db) await db.ref(`messages/${msgId}`).set(msgObj);
+
+            document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?messageID=${msgId}`;
+            document.getElementById('modal-share-result').classList.remove('hidden');
+
+            e.target.reset();
+            const defaultRadio = document.querySelector('input[name="theme"][value="box_open"]');
+            if (defaultRadio) {
+                defaultRadio.checked = true;
+                toggleCustomInput(defaultRadio);
+            }
+        };
+
+        // --- MESSAGE VIEW ---
+        async function loadAndRenderMessage(msgId) {
+            document.getElementById('message-loading').classList.remove('hidden');
+            document.getElementById('message-expired-card').classList.add('hidden');
+            document.getElementById('message-reveal-stage').classList.add('hidden');
+
+            if (!db) return;
+            try {
+                const snap = await db.ref(`messages/${msgId}`).once('value');
+                const msg = snap.val();
+                document.getElementById('message-loading').classList.add('hidden');
+
+                if (!msg || msg.isDeleted || (msg.expiresAt && Date.now() > msg.expiresAt)) {
+                    document.getElementById('message-expired-card').classList.remove('hidden'); return;
+                }
+                currentLoadedMessage = msg;
+                document.getElementById('message-reveal-stage').classList.remove('hidden');
+                document.getElementById('unopened-box-wrapper').classList.remove('hidden');
+                document.getElementById('revealed-card').classList.add('hidden', 'scale-95', 'opacity-0');
+                
+                const container = document.getElementById('interactive-gift-object');
+                container.innerHTML = '';
+                if (msg.animation === 'custom_emoji') { container.innerHTML = `<div class="custom-emoji-cover">${msg.customCover || '🎁'}</div>`; }
+                else if (msg.animation === 'custom_text') { container.innerHTML = `<div class="custom-text-cover">${msg.customCover || '열어보기'}</div>`; }
+                else if (msg.animation === 'sparkle') { container.innerHTML = `<div class="sparkle-card-preview flex items-center justify-center p-4"><div><i class="fa-solid fa-wand-magic-sparkles text-4xl text-yellow-300 animate-pulse mb-2"></i></div></div>`; }
+                else if (msg.animation === 'envelope') { container.innerHTML = `<div class="envelope-container flex items-center justify-center"><i class="fa-solid fa-envelope text-5xl text-sky-100"></i></div>`; }
+                else { container.innerHTML = `<div id="box-element" class="gift-box"><div class="gift-lid"></div><div class="gift-body"></div></div>`; }
+            } catch (e) { document.getElementById('message-loading').classList.add('hidden'); document.getElementById('message-expired-card').classList.remove('hidden'); }
+        }
+
+        window.unwrapMessage = function() {
+            if (!currentLoadedMessage) return;
+            const box = document.getElementById('box-element'); if (box) box.classList.add('opened');
+            triggerConfetti();
+            document.getElementById('unopened-box-wrapper').classList.add('hidden');
+            const card = document.getElementById('revealed-card');
+            card.classList.remove('hidden'); setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 50);
+            
+            document.getElementById('recipient-display-name').innerText = `To. ${currentLoadedMessage.recipientName}`;
+            document.getElementById('message-body-text').innerText = currentLoadedMessage.content;
+            document.getElementById('sender-display-name').innerText = currentLoadedMessage.sender || currentLoadedMessage.authorId;
+            const d = new Date(currentLoadedMessage.createdAt);
+            document.getElementById('created-time-display').innerText = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+            const logData = { ip: userIpAddress, userAgent: navigator.userAgent, timestamp: Date.now() };
+            if (currentUser) { logData.uid = currentUser.uid; logData.id = emailToId(currentUser.email); }
+            else { logData.screenResolution = `${window.screen.width}x${window.screen.height}`; logData.language = navigator.language; logData.platform = navigator.platform; }
+            writeLogRecord('log/sawmessage', logData);
+        };
+
+        function getExpirationBadge(expiresAt) {
+            if (!expiresAt) {
+                return `<span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"><i class="fa-regular fa-clock"></i>무제한</span>`;
+            }
+            const now = Date.now();
+            const diff = expiresAt - now;
+            const d = new Date(expiresAt);
+            const formattedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+            if (diff <= 0) {
+                return `<span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-300 border border-red-500/30"><i class="fa-solid fa-hourglass-end"></i>만료됨 (${formattedDate})</span>`;
+            }
+
+            const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
+            let remainStr = '';
+            if (hoursLeft >= 24) {
+                const daysLeft = Math.ceil(hoursLeft / 24);
+                remainStr = `D-${daysLeft}`;
+            } else if (hoursLeft > 0) {
+                remainStr = `${hoursLeft}시간 남음`;
+            } else {
+                const minsLeft = Math.max(1, Math.floor(diff / (1000 * 60)));
+                remainStr = `${minsLeft}분 남음`;
+            }
+
+            return `<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30"><i class="fa-regular fa-clock"></i>${formattedDate} 만료 (${remainStr})</span>`;
+        }
+
+        // --- MY PAGE ---
+        async function loadMyPageLinks() {
+            if (!currentUser) return;
+            const container = document.getElementById('mypage-links-container'); container.innerHTML = '';
+            if (!db) return;
+            const snap = await db.ref('messages').once('value'); const all = snap.val();
+            if (!all) { container.innerHTML = '<div class="glass-card p-8 text-center text-slate-400">생성된 메시지가 없습니다.</div>'; return; }
+            const myMsgs = Object.values(all).filter(m => m.authorUid === currentUser.uid && !m.isDeleted);
+            if (!myMsgs.length) { container.innerHTML = '<div class="glass-card p-8 text-center text-slate-400">생성된 메시지가 없습니다.</div>'; return; }
+
+            myMsgs.sort((a,b)=>b.createdAt-a.createdAt).forEach(msg => {
+                const expirationBadgeHtml = getExpirationBadge(msg.expiresAt);
+                container.innerHTML += `
+                    <div class="glass-card rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center border-white/10 gap-4 transition hover:border-purple-500/30">
+                        <div class="space-y-2 flex-grow min-w-0">
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <span class="text-xs font-bold text-pink-300">To. ${msg.recipientName}</span>
+                                ${expirationBadgeHtml}
+                            </div>
+                            <p class="text-sm font-medium text-white truncate max-w-md">${msg.content}</p>
+                        </div>
+                        <div class="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
+                            <button onclick="copyMessageLink('${msg.id}')" class="px-3 py-1.5 bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 text-xs font-medium rounded-xl text-pink-300 transition flex items-center gap-1"><i class="fa-solid fa-copy"></i>링크 복사</button>
+                            <button onclick="extendExpiration('${msg.id}')" class="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-xs font-medium rounded-xl text-purple-300 transition">+1일 연장</button>
+                            <button onclick="softDeleteMessage('${msg.id}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-xs font-medium rounded-xl text-red-300 transition">삭제</button>
+                        </div>
+                    </div>`;
+            });
+        }
+        window.extendExpiration = async function(id) { if(db){ const s=await db.ref(`messages/${id}`).once('value'); const m=s.val(); await db.ref(`messages/${id}`).update({expiresAt: (m.expiresAt && m.expiresAt>Date.now()?m.expiresAt:Date.now())+86400000}); showToast("만료 기간이 1일 연장되었습니다.","success"); loadMyPageLinks(); }};
+        window.softDeleteMessage = async function(id) { if(db){ await db.ref(`messages/${id}`).update({isDeleted: true, deletedAt: Date.now()}); showToast("메시지가 삭제되었습니다.","info"); loadMyPageLinks(); if(currentUserRole==='admin')loadAdminAllMessages(); }};
+
+        // --- ADMIN PANEL ---
+        window.openAdminModal = function() { if(currentUserRole!=='admin')return; document.getElementById('modal-admin').classList.remove('hidden'); loadAdminAllMessages(); };
+        window.closeAdminModal = function() { document.getElementById('modal-admin').classList.add('hidden'); };
+        
+        window.loadAdminAllMessages = async function() {
+            if (!db) return;
+            const container = document.getElementById('admin-messages-list');
+            const snap = await db.ref('messages').once('value');
+            const msgs = snap.val();
+            if (!msgs) { container.innerHTML = '<div class="p-4 text-center">등록된 메시지가 없습니다.</div>'; return; }
+            globalAdminMessagesMap = msgs;
+            
+            const list = Object.values(msgs).sort((a,b)=>b.createdAt-a.createdAt);
+            document.getElementById('admin-msg-count').innerText = `총 ${list.length}개`;
+            container.innerHTML = '';
+            list.forEach(msg => {
+                const isDel = msg.isDeleted;
+                const isExp = msg.expiresAt && Date.now() > msg.expiresAt;
+                container.innerHTML += `
+                    <div class="p-4 rounded-2xl border ${isDel ? 'bg-red-950/20 border-red-500/30' : 'glass-card border-white/10'} flex flex-col md:flex-row justify-between gap-3">
+                        <div class="space-y-1 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-amber-400">${msg.authorId}</span>
+                                ${isDel ? '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-300">삭제됨</span>' : ''}
+                                ${isExp && !isDel ? '<span class="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">만료됨</span>' : ''}
+                            </div>
+                            <p class="text-sm font-semibold text-white break-all">${msg.content}</p>
+                            <p class="text-slate-400">만료: ${msg.expiresAt ? new Date(msg.expiresAt).toLocaleString() : '무제한'}</p>
+                        </div>
+                        <div class="flex gap-2 shrink-0 flex-wrap justify-end items-center">
+                            <button onclick="copyMessageLink('${msg.id}')" class="px-3 py-1.5 bg-pink-500/20 hover:bg-pink-500/40 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-copy"></i>링크 복사</button>
+                            <button onclick="adminOpenEditModal('${msg.id}')" class="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold transition">상세 편집</button>
+                            ${isDel ? `<button onclick="adminRestoreMessage('${msg.id}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition">복원</button>` 
+                                    : `<button onclick="softDeleteMessage('${msg.id}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/30 rounded-xl text-xs font-bold transition">삭제</button>`}
+                        </div>
+                    </div>`;
+            });
+        };
+
+        window.adminRestoreMessage = async function(id) { if(db){ await db.ref(`messages/${id}`).update({isDeleted: false, deletedAt: null}); showToast("복원되었습니다.","success"); loadAdminAllMessages(); }};
+        
+        window.adminOpenEditModal = function(id) {
+            const msg = globalAdminMessagesMap[id]; 
+            if(!msg) return;
+            
+            closeAdminModal();
+
+            document.getElementById('edit-msg-id').value = id;
+            document.getElementById('edit-author').value = msg.authorId || '';
+            document.getElementById('edit-recipient').value = msg.recipientName || '';
+            document.getElementById('edit-content').value = msg.content || '';
+            document.getElementById('edit-animation').value = msg.animation || 'box_open';
+            document.getElementById('edit-custom-cover').value = msg.customCover || '';
+            
+            const expInp = document.getElementById('edit-expires-at');
+            if (msg.expiresAt) {
+                const d = new Date(msg.expiresAt); 
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                expInp.value = d.toISOString().slice(0, 16);
+            } else { expInp.value = ''; }
+            
+            document.getElementById('modal-admin-edit').classList.remove('hidden');
+        };
+
+        window.closeAdminEditModal = function() { 
+            document.getElementById('modal-admin-edit').classList.add('hidden'); 
+            openAdminModal();
+        };
+        
+        window.quickSetExpire = function(type) {
+            const inp = document.getElementById('edit-expires-at');
+            let base = inp.value ? new Date(inp.value).getTime() : Date.now();
+            let newTime = base;
+            if (type === 'now') newTime = Date.now() - 1000;
+            else if (type === '-1h') newTime -= 3600000;
+            else if (type === '-1d') newTime -= 86400000;
+            else if (type === '+1h') newTime += 3600000;
+            else if (type === '+1d') newTime += 86400000;
+            else if (type === '+7d') newTime += 604800000;
+            
+            if (type === 'unlimited') { inp.value = ''; }
+            else { const d = new Date(newTime); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); inp.value = d.toISOString().slice(0, 16); }
+        };
+
+        window.handleAdminEditSubmit = async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-msg-id').value;
+            const expStr = document.getElementById('edit-expires-at').value;
+            const updates = {
+                authorId: document.getElementById('edit-author').value,
+                recipientName: document.getElementById('edit-recipient').value,
+                content: document.getElementById('edit-content').value,
+                animation: document.getElementById('edit-animation').value,
+                customCover: document.getElementById('edit-custom-cover').value,
+                expiresAt: expStr ? new Date(expStr).getTime() : null
+            };
+            if(db) { 
+                await db.ref(`messages/${id}`).update(updates); 
+                showToast("변경사항이 저장되었습니다.","success"); 
+                document.getElementById('modal-admin-edit').classList.add('hidden');
+                openAdminModal();
+            }
+        };
+
+        // --- NEW & UTILS: 공유 기능 구현 ---
+        
+        // 카카오 SDK 초기화
+        try {
+            if (window.Kakao && !window.Kakao.isInitialized()) {
+                // 발급받은 실제 카카오톡 JavaScript 키로 변경이 필요합니다.
+                window.Kakao.init('f55f69c2d25b0ec7a771970adc268a50');
+            }
+        } catch(e) { console.error("Kakao SDK Init Error:", e); }
+
+        window.shareKakao = function(url) {
+            const shareUrl = url || window.location.href;
+            if (window.Kakao && window.Kakao.isInitialized()) {
+                try {
+                    window.Kakao.Share.sendDefault({
+                        objectType: 'feed',
+                        content: {
+                            title: '감성 비밀 메시지 도착!',
+                            description: '당신을 위한 특별한 비밀 메시지가 도착했습니다. 지금 바로 열어보세요!',
+                            imageUrl: 'https://cdn-icons-png.flaticon.com/512/3004/3004123.png',
+                            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+                        },
+                        buttons: [{ title: '메시지 확인하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+                    });
+                } catch (error) {
+                    showToast("카카오톡 앱 키(JavaScript 키)를 설정해주세요.", "error");
+                    fallbackCopyText(shareUrl);
+                }
+            } else if (navigator.share) {
+                // 앱 키가 설정되지 않은 상태의 Fallback 처리
+                navigator.share({ title: '감성 비밀 메시지', text: '당신을 위한 메시지가 도착했습니다!', url: shareUrl });
+            } else {
+                fallbackCopyText(shareUrl);
+                showToast("링크가 클립보드에 복사되었습니다.", "info");
+            }
+        };
+
+        window.shareSMS = function(url) {
+            const shareUrl = url || window.location.href;
+            const text = `[비밀 메시지 도착]\n누군가 당신에게 특별한 메시지를 남겼어요. 지금 확인해보세요!\n${shareUrl}`;
+            const agent = navigator.userAgent.toLowerCase();
+            let separator = '?';
+            
+            // iOS와 Android 기기 분기 처리
+            if (agent.indexOf('iphone') > -1 || agent.indexOf('ipad') > -1) {
+                separator = '&';
+            }
+            window.location.href = `sms:${separator}body=${encodeURIComponent(text)}`;
+        };
+
+        window.shareInstagram = function(url) {
+            const shareUrl = url || window.location.href;
+            fallbackCopyText(shareUrl);
+            
+            // 인스타그램 앱 유도를 위해 약간의 딜레이 후 alert 및 카메라 연결
+            setTimeout(() => {
+                alert('링크가 클립보드에 복사되었습니다.\\n인스타그램 앱을 열어 스토리에 링크를 붙여넣거나 DM으로 공유해보세요!');
+                window.location.href = 'instagram://story-camera'; // 인스타그램 스토리 카메라로 연결 시도
+            }, 300);
+        };
+
+        window.copyMessageLink = function(msgId) {
+            const link = `${window.location.origin}${window.location.pathname}?messageID=${msgId}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(() => {
+                    showToast("공유 링크가 복사되었습니다.", "success");
+                }).catch(() => fallbackCopyText(link));
+            } else { fallbackCopyText(link); }
+        };
+
+        function fallbackCopyText(text) {
+            const t = document.createElement('input');
+            document.body.appendChild(t);
+            t.value = text;
+            t.select();
+            document.execCommand('copy');
+            document.body.removeChild(t);
+            showToast("공유 링크가 복사되었습니다.", "success");
+        }
+
+        window.closeShareModal = () => document.getElementById('modal-share-result').classList.add('hidden');
+        window.copyShareLinkInput = () => { document.getElementById('share-link-input').select(); document.execCommand('copy'); showToast("복사되었습니다.", "success"); };
+        window.copyCurrentURL = () => { const t = document.createElement('input'); document.body.appendChild(t); t.value = window.location.href; t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast("링크가 복사되었습니다.", "success"); };
+        window.previewCreatedMessage = () => { closeShareModal(); safePushState(`?messageID=${generatedMessageId}`); showView('message'); loadAndRenderMessage(generatedMessageId); };
+        window.openPrivacyModal = () => document.getElementById('modal-privacy').classList.remove('hidden');
+        window.closePrivacyModal = () => document.getElementById('modal-privacy').classList.add('hidden');
+        window.handleNavigateToCreate = () => currentUser ? navigateTo('create') : (openAuthModal(), showToast("로그인이 필요합니다."));
+        
+        function triggerConfetti() {
+            const cvs = document.getElementById('confettiCanvas'), ctx = cvs.getContext('2d');
+            cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+            const pts = [], colors = ['#ec4899','#a855f7','#38bdf8','#fbbf24','#f43f5e'];
+            for(let i=0;i<90;i++) pts.push({x:cvs.width/2,y:cvs.height/2,vx:(Math.random()-0.5)*16,vy:(Math.random()-0.8)*18,s:Math.random()*8+4,c:colors[Math.floor(Math.random()*colors.length)],r:Math.random()*360,rs:(Math.random()-0.5)*10,o:1});
+            function anim() {
+                ctx.clearRect(0,0,cvs.width,cvs.height); let alive=false;
+                pts.forEach(p=>{if(p.o<=0)return;alive=true;p.x+=p.vx;p.y+=p.vy;p.vy+=0.4;p.o-=0.012;p.r+=p.rs;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r*Math.PI/180);ctx.globalAlpha=Math.max(0,p.o);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);ctx.restore();});
+                if(alive) requestAnimationFrame(anim); else ctx.clearRect(0,0,cvs.width,cvs.height);
+            } anim();
+        }
+
+        function showView(name) { ['view-message','view-create','view-mypage'].forEach(v => document.getElementById(v).classList.toggle('hidden', v!==`view-${name}`)); }
+        window.navigateTo = function(name) { safePushState(''); showView(name); if(name==='mypage')loadMyPageLinks(); };
+        function checkRoute() { const id = new URLSearchParams(window.location.search).get('messageID'); id ? (showView('message'), loadAndRenderMessage(id)) : showView('create'); }
+        
+        window.addEventListener('DOMContentLoaded', async () => { await fetchUserIP(); checkRoute(); });
+        window.addEventListener('popstate', checkRoute);
+    </script>
+</body>
+</html>
