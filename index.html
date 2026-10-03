@@ -32,7 +32,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <!-- Kakao SDK -->
-    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js" integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J" crossorigin="anonymous"></script>
 
     <style>
         * { font-family: 'Noto Sans KR', 'Outfit', sans-serif; box-sizing: border-box; }
@@ -781,43 +781,52 @@
 
         // --- NEW & UTILS: 공유 기능 구현 ---
         
-        // 카카오 SDK 초기화
-        try {
-            if (window.Kakao && !window.Kakao.isInitialized()) {
-                // 발급받은 실제 카카오톡 JavaScript 키로 변경이 필요합니다.
-                window.Kakao.init('f55f69c2d25b0ec7a771970adc268a50');
+        // Kakao JavaScript SDK 초기화
+        function initializeKakaoSDK() {
+            try {
+                if (window.Kakao && !window.Kakao.isInitialized()) {
+                    window.Kakao.init('f55f69c2d25b0ec7a771970adc268a50');
+                }
+            } catch (error) {
+                console.error('Kakao SDK Init Error:', error);
             }
-        } catch(e) { console.error("Kakao SDK Init Error:", e); }
+        }
+        initializeKakaoSDK();
 
+        // 카카오톡 공유: 사용자가 카카오톡 대화방을 선택하는 기본 공유 방식
         window.shareKakao = function(url) {
             const shareInput = document.getElementById('share-link-input');
-            const rawUrl = String(url || (shareInput ? shareInput.value : '') || '').trim();
-
-            if (!rawUrl) {
-                showToast('공유할 메시지 링크를 찾을 수 없습니다.', 'error');
-                return;
-            }
+            const rawUrl = String(
+                url ||
+                (shareInput && shareInput.value.trim()) ||
+                window.location.href
+            ).trim();
 
             let shareUrl;
             try {
-                const parsedUrl = new URL(rawUrl, window.location.origin);
-                if (parsedUrl.origin !== 'https://lol.jjy0205.site') {
+                const parsed = new URL(rawUrl, window.location.origin);
+                if (parsed.origin !== 'https://lol.jjy0205.site') {
                     showToast('올바르지 않은 공유 주소입니다.', 'error');
                     return;
                 }
-                const messageID = parsedUrl.searchParams.get('messageID');
+
+                const messageID = parsed.searchParams.get('messageID');
                 if (!messageID) {
-                    showToast('메시지 ID가 포함되지 않은 링크입니다. 메시지를 먼저 생성해 주세요.', 'error');
+                    showToast('메시지 ID가 포함된 링크가 없습니다. 메시지를 먼저 생성해 주세요.', 'error');
                     return;
                 }
-                shareUrl = parsedUrl.href;
+
+                // 기존 사이트의 messageID 라우팅 형식을 유지합니다.
+                shareUrl = `${parsed.origin}${parsed.pathname}?messageID=${encodeURIComponent(messageID)}`;
             } catch (error) {
+                console.error('Invalid Kakao share URL:', error);
                 showToast('공유 링크 형식이 올바르지 않습니다.', 'error');
                 return;
             }
 
+            initializeKakaoSDK();
             if (!window.Kakao || !window.Kakao.isInitialized() || !window.Kakao.Share) {
-                showToast('카카오톡 공유 SDK가 초기화되지 않았습니다.', 'error');
+                showToast('카카오 공유 SDK를 불러오지 못했습니다. 페이지를 새로고침해 주세요.', 'error');
                 return;
             }
 
@@ -825,8 +834,8 @@
                 window.Kakao.Share.sendDefault({
                     objectType: 'feed',
                     content: {
-                        title: '감성 비밀 메시지 도착!',
-                        description: '아래의 [메시지 확인하기] 버튼을 눌러 나만의 비밀 메시지를 확인하세요.',
+                        title: '비밀 메시지가 도착했습니다 💌',
+                        description: '아래 버튼을 눌러 나만을 위한 메시지를 확인해 보세요.',
                         imageUrl: 'https://lol.jjy0205.site/og-image.png',
                         link: {
                             mobileWebUrl: shareUrl,
@@ -835,7 +844,7 @@
                     },
                     buttons: [
                         {
-                            title: '메시지 확인하기',
+                            title: '비밀 메시지 확인하기',
                             link: {
                                 mobileWebUrl: shareUrl,
                                 webUrl: shareUrl
@@ -845,7 +854,7 @@
                 });
             } catch (error) {
                 console.error('Kakao Share Error:', error);
-                showToast('카카오톡 공유 요청에 실패했습니다. 카카오 앱 설정과 도메인을 확인해 주세요.', 'error');
+                showToast('카카오톡 공유 요청에 실패했습니다. 카카오 개발자 설정의 웹 도메인을 확인해 주세요.', 'error');
             }
         };
 
